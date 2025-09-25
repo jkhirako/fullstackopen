@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import phonebookService from "./services/phonebook";
+import Notification from "./components/Notification";
 
 const Filter = ({ setFilter, filter }) => {
   const handleFilterChange = (event) => {
@@ -50,7 +51,7 @@ const Persons = ({ persons, filter, handleDelete }) => {
     : persons;
 
   return phonebookFilter.map((person) => (
-    <div key={person.name}>
+    <div key={person.id}>
       {person.name} {person.number}{" "}
       <button onClick={() => handleDelete(person.id)}>delete</button>
     </div>
@@ -62,6 +63,14 @@ const App = () => {
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [filter, setFilter] = useState("");
+  const [notif, setNotif] = useState({ message: null, type: null });
+
+  const showNotification = (message, type) => {
+    setNotif({ message, type });
+    setTimeout(() => {
+      setNotif({ message: null, type: null });
+    }, 5000);
+  };
 
   useEffect(() => {
     phonebookService.getAll().then((data) => {
@@ -94,10 +103,20 @@ const App = () => {
                 p.id === returnedContact.id ? returnedContact : p
               )
             );
+            setNewName("");
+            setNewNumber("");
+            showNotification(`Updated ${newName}'s contact number`, "success");
+          })
+          .catch((error) => {
+            showNotification(
+              `Error: Information of ${newName} has already been removed from server`,
+              "error"
+            );
+            setPersons(persons.filter((p) => p.id !== person.id));
+            setNewName("");
+            setNewNumber("");
           });
       }
-      setNewName("");
-      setNewNumber("");
       return;
     }
 
@@ -105,6 +124,7 @@ const App = () => {
       setPersons(persons.concat(data));
       setNewName("");
       setNewNumber("");
+      showNotification(`Added ${newName}`, "success");
     });
   };
 
@@ -118,7 +138,7 @@ const App = () => {
 
   return (
     <div>
-      <div>debug filter: {filter}</div>
+      <Notification message={notif.message} type={notif.type}></Notification>
       <h2>Phonebook</h2>
       <Filter setFilter={setFilter} filter={filter} />
       <h3>add a new</h3>
