@@ -9,52 +9,35 @@ morgan.token("body", (req) => {
   return req.method === "POST" ? JSON.stringify(req.body) : "";
 });
 app.use(express.static("dist"));
-
-let phonebook = [
-  {
-    id: "1",
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: "2",
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: "3",
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: "4",
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
+require("dotenv").config();
+const Contact = require("./models/contact");
 
 app.get("/api/persons", (req, res) => {
-  res.json(phonebook);
+  Contact.find({}).then((contacts) => {
+    res.json(contacts);
+  });
 });
 
 app.get("/info", (req, res) => {
-  const phonebook_length = phonebook.length;
   const time = new Date();
-  res.send(`
-    <div>Phonebook has info for ${phonebook_length} people</div>
+  Contact.countDocuments({}).then((count) => {
+    res.send(`
+    <div>Phonebook has info for ${count} people</div>
     <div>${time}</div>
     `);
+  });
 });
 
 app.get("/api/persons/:id", (req, res) => {
-  const id = req.params.id;
-  const person = phonebook.find((person) => person.id == id);
-
-  if (person) {
-    res.json(person);
-  } else {
-    res.status(400).end();
-  }
+  Contact.findById(req.params.id).then((contact) => {
+    if (contact) {
+      res.json(contact);
+    } else {
+      res.status(404).json({
+        error: "Contact not found",
+      });
+    }
+  });
 });
 
 app.delete("/api/persons/:id", (req, res) => {
@@ -63,10 +46,6 @@ app.delete("/api/persons/:id", (req, res) => {
 
   res.status(204).end();
 });
-
-const generateID = () => {
-  return String(Math.floor(Math.random() * 1_000_000));
-};
 
 app.post("/api/persons", (req, res) => {
   const body = req.body;
@@ -77,24 +56,14 @@ app.post("/api/persons", (req, res) => {
     });
   }
 
-  const nameExists = phonebook.some(
-    (person) => person.name.toLowerCase() === body.name.toLowerCase()
-  );
-
-  if (nameExists) {
-    return res.status(400).json({
-      error: "Name already exists",
-    });
-  }
-
-  const person = {
-    id: generateID(),
+  const person = new Contact({
     name: body.name,
     number: body.number,
-  };
+  });
 
-  phonebook = phonebook.concat(person);
-  res.json(person);
+  person.save().then((savedContact) => {
+    res.json(savedContact);
+  });
 });
 
 const PORT = process.env.port || 3001;
