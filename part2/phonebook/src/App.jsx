@@ -112,20 +112,60 @@ const App = () => {
               `Error: Information of ${newName} has already been removed from server`,
               "error"
             );
-            setPersons(persons.filter((p) => p.id !== person.id));
             setNewName("");
             setNewNumber("");
+            setPersons(persons.filter((p) => p.id !== person.id));
           });
       }
       return;
     }
 
-    phonebookService.create(contactObject).then((data) => {
-      setPersons(persons.concat(data));
-      setNewName("");
-      setNewNumber("");
-      showNotification(`Added ${newName}`, "success");
-    });
+    phonebookService
+      .create(contactObject)
+      .then((data) => {
+        setPersons(persons.concat(data));
+        setNewName("");
+        setNewNumber("");
+        showNotification(`Added ${newName}`, "success");
+      })
+      .catch((error) => {
+        console.log("Full error object:", error);
+        console.log("Status code:", error.response?.status);
+        const status = error.response?.status;
+        const message = error.response?.data?.error;
+
+        if (status === 400 && message) {
+          if (
+            message.includes("Path `name`") &&
+            message.includes("minimum allowed length")
+          ) {
+            showNotification(
+              "Name must be at least 3 characters long.",
+              "error"
+            );
+          } else if (
+            message.includes("Path `number`") &&
+            message.includes("minimum allowed length")
+          ) {
+            showNotification(
+              "Phone number must be at least 8 characters long.",
+              "error"
+            );
+          } else if (message.includes("not a valid phone number format")) {
+            showNotification(
+              "Phone number format is invalid. Use format like 09-1234567/092-1233232.",
+              "error"
+            );
+          } else {
+            showNotification(message, "error");
+          }
+        } else {
+          showNotification("Unexpected error occurred", "error");
+        }
+
+        setNewName("");
+        setNewNumber("");
+      });
   };
 
   const handleDelete = (id) => {
